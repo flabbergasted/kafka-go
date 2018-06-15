@@ -1,0 +1,177 @@
+<style>
+    .player {
+        position:absolute; 
+        height:10px; 
+        width:10px;
+    }
+</style>
+<script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+<script type="text/javascript">
+    "use strict";
+    var moving = new Direction();
+    var vel = new Vector();
+    var speedConstant = 2;
+    var conn;
+    var connectionIsOpen = false;
+    var currPlayer;
+    var playerList = {};
+    document.addEventListener('keyup', (event) => {
+        const keyName = event.key;
+        if (event.keyCode == 38) {
+            moving.North = false;
+            vel.Y = 0;
+        }
+        if (event.keyCode == 40) {
+            moving.South = false;
+            vel.Y = 0;
+        }
+        if (event.keyCode == 39) {
+            moving.East = false;
+            vel.X = 0;
+        }
+        if (event.keyCode == 37) {
+            moving.West = false;
+            vel.X = 0;
+        }
+    });
+    document.addEventListener('keydown', (event) => {
+        const keyName = event.key;
+        var player = document.getElementById("player1");
+
+        if (event.keyCode == 38 && !moving.North) {
+            moving.North = true;
+            vel.Y = -1 * speedConstant;
+        }
+        if (event.keyCode == 40 && !moving.South) {
+            moving.South = true;
+            vel.Y = speedConstant;
+        }
+        if (event.keyCode == 39 && !moving.East) {
+            moving.East = true;
+            vel.X = speedConstant;
+        }
+        if (event.keyCode == 37 && !moving.West) {
+            moving.West = true;
+            vel.X = -1 * speedConstant;
+        }
+    });
+    $(document).ready(function () {
+        open();
+        window.requestAnimationFrame(MovePlayer);
+    });
+    function Vector() {
+        this.X = 0;
+        this.Y = 0;
+    }
+    function Direction() {
+        var self = this;
+
+        this.North = false;
+        this.South = false;
+        this.East = false;
+        this.West = false;
+        this.IsMoving = function () {
+            return self.North || self.South || self.East || self.West;
+        }
+    }
+    function ParsePxToNumber(pixels) {
+        var ipx = pixels.replace("px", "") * -1 * -1;
+
+        return ipx;
+    }
+    function MovePlayer() {
+        if (moving.IsMoving()) {
+            applyVelocityToPlayer(currPlayer, vel);
+            if(connectionIsOpen){
+                SendPlayerUpdate(currPlayer);
+            }
+        }
+        window.requestAnimationFrame(MovePlayer);
+    }
+    function SendPlayerUpdate(player){
+        var newVel = {name:player.id, position:{X: player.style.left, Y:player.style.top}};
+        conn.send(JSON.stringify(newVel));
+    }
+    function applyVelocityToPlayer(player, vel){
+        var top = ParsePxToNumber(player.style.top) + vel.Y,
+            left = ParsePxToNumber(player.style.left) + vel.X;
+        
+        if(top < 0){
+            top = 0;
+        }
+        if(left < 0){
+            left = 0;
+        }
+        if(top + 10 > 500){
+            top = 500 - player.style.height;
+        }
+        if(left + 10 > 500){
+            left = 500 - player.style.width;
+        }
+        
+        player.style.top = top;
+        player.style.left = left;
+    }
+    function open(){
+        if (window["WebSocket"]) {
+            conn = new WebSocket("ws://" + document.location.host + "/ws");
+            conn.onclose = function (evt) {
+                console.log("Connection closed.");
+                connectionIsOpen = false;
+            };
+            conn.onmessage = function (evt) {
+                console.log(evt.data);
+                ProcessIncomingPlayerData(JSON.parse(evt.data));
+            };
+            conn.onopen = function (event) {
+                console.log("Connection opened.");
+                connectionIsOpen = true;
+            };
+        } else {
+            console.log("Your browser does not support WebSockets.");
+        }
+    }
+    function CreatePrimaryPlayer(){
+        var name = document.getElementById("playerName");
+        
+        currPlayer = CreatePlayer(name.value, {X: 0, Y: 0});
+    }
+    function CreatePlayer(id, position){
+        var board= document.getElementById("board"),
+            newPlayer = document.createElement("div");
+        
+        newPlayer.className = "player";
+        newPlayer.setAttribute("id", id);
+        newPlayer.style.top = position.Y;
+        newPlayer.style.left = position.X;
+        newPlayer.style.backgroundColor = GenerateColor();
+
+        board.appendChild(newPlayer);
+        return newPlayer;
+    }
+    function ProcessIncomingPlayerData(data){
+        var playerToProcess = playerList[data.name];
+        if(!playerToProcess){
+            playerList[data.name] = CreatePlayer(data.name, data.position);
+            playerToProcess = playerList[data.name];
+        }
+
+        playerToProcess.style.top = data.position.Y;
+        playerToProcess.style.left = data.position.X;
+    }
+    function GenerateColor(){
+        var hexVal = "0123456789ABCDEF".split(""),
+            final = "#";
+
+        for(var i = 0; i < 6; i++){
+            var rand = Math.floor(Math.random()*16)
+            final += hexVal[rand];
+        }
+        return final;
+    }
+</script>
+<h2>Home</h2>
+<input id="playerName" type=text/>
+<button id="createPlayer" onclick="CreatePrimaryPlayer()">Create Player</button>
+<div id="board" style="position:relative;height:500px; width:500px; background-color:black">
+</div>
