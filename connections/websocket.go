@@ -27,7 +27,7 @@ const (
 //WebsocketConnection controls the underlying websocket and calls a provided callback function on message receive.
 type WebsocketConnection struct {
 	connection  *websocket.Conn
-	cleanup     chan int
+	Cleanup     chan int
 	sendMessage chan []byte
 	logger      ILogger
 }
@@ -38,7 +38,7 @@ func NewWebsocketConnection(w http.ResponseWriter, r *http.Request, newLogger IL
 	var err error
 	wconn.connection, err = upgrader.Upgrade(w, r, nil)
 	wconn.sendMessage = make(chan []byte)
-	wconn.cleanup = make(chan int)
+	wconn.Cleanup = make(chan int)
 	wconn.logger = newLogger
 
 	if err != nil {
@@ -75,7 +75,7 @@ func (wconn *WebsocketConnection) Send(msg []byte) {
 
 //WSClose Closes the websocket and cleans up all running go routines
 func WSClose(w *WebsocketConnection) {
-	close(w.cleanup)
+	close(w.Cleanup)
 }
 
 //takes care of writing messages and periodic pings to the underlying websocket
@@ -109,7 +109,7 @@ func (wconn *WebsocketConnection) writeLoop() {
 				WSClose(wconn)
 				return
 			}
-		case <-wconn.cleanup:
+		case <-wconn.Cleanup:
 			return
 		case newMsg := <-wconn.sendMessage:
 			wconn.logger.Log("websocket.go sending message")
