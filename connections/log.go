@@ -20,3 +20,14 @@ func (f FmtLogger) Log(s string) {
 func (f FmtLogger) LogError(e error) {
 	fmt.Printf("error: %v \n", e)
 }
+
+//NoOpLogger implements ILogger by implementing noop methods
+type NoOpLogger struct{}
+
+//Log prints the s parameter to fmt.Println
+func (f NoOpLogger) Log(s string) {
+}
+
+//LogError prints the err parameter to fmt.Printf
+func (f NoOpLogger) LogError(e error) {
+}

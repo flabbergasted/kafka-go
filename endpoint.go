@@ -22,7 +22,7 @@ func main() {
 	}
 }
 func webSocket(w http.ResponseWriter, r *http.Request) {
-	logger := connections.FmtLogger{}
+	logger := connections.NoOpLogger{}
 	conn, err := connections.NewWebsocketConnection(w, r, logger)
 	if err != nil {
 		fmt.Printf("error %v:", err)
