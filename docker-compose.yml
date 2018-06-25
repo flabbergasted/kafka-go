@@ -1,0 +1,47 @@
+version: '2'
+services:
+  zookeeper:
+    image: wurstmeister/zookeeper
+    ports:
+      - "2181:2181"
+  kafka:
+    image: wurstmeister/kafka
+    ports:
+      - "9092:9092"
+    environment:
+      PORT_COMMAND: "docker port $$(hostname) 9092/tcp | cut -d: -f2"
+      KAFKA_LISTENERS: PLAINTEXT://:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://192.168.0.106:_{PORT_COMMAND}
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+  kafka2:
+    image: wurstmeister/kafka
+    ports:
+      - "9093:9092"
+    environment:
+      PORT_COMMAND: "docker port $$(hostname) 9092/tcp | cut -d: -f2"
+      KAFKA_LISTENERS: PLAINTEXT://:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://192.168.0.106:_{PORT_COMMAND}
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+  kafka3:
+    image: wurstmeister/kafka
+    ports:
+      - "9094:9092"
+    environment:
+      PORT_COMMAND: "docker port $$(hostname) 9092/tcp | cut -d: -f2"
+      KAFKA_LISTENERS: PLAINTEXT://:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://192.168.0.106:_{PORT_COMMAND}
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+  go-server:
+    image: kafkatest
+    build: .
+    ports:
+      - "1588:1588"
+    environment:
+        HTML_LOCATION: "/go/src/github.com/flabbergasted/kafka/html"
+        BROKER_LIST: "kafka:9092, kafka2:9092, kafka3:9092"

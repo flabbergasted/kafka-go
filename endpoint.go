@@ -1,13 +1,16 @@
 package main
 
-import _ "net/http/pprof"
-import _ "net/http"
 import (
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	_ "net/http"
+	_ "net/http/pprof"
+	"os"
+
+	_ "net/http"
+
 	_ "net/http/pprof"
 
 	"github.com/flabbergasted/kafka/connections"
@@ -23,11 +26,17 @@ func main() {
 }
 func webSocket(w http.ResponseWriter, r *http.Request) {
 	logger := connections.NoOpLogger{}
+	brokerList := os.Getenv("BROKER_LIST")
+	if brokerList == "" {
+		brokerList = "localhost:9092"
+	}
+
+	fmt.Println(brokerList)
 	conn, err := connections.NewWebsocketConnection(w, r, logger)
 	if err != nil {
 		fmt.Printf("error %v:", err)
 	}
-	kafkaConn, kerr := connections.NewKafkaConnection(logger)
+	kafkaConn, kerr := connections.NewKafkaConnection(logger, brokerList)
 	if kerr != nil {
 		fmt.Printf("error %v:", err)
 	}
@@ -47,12 +56,18 @@ func webSocket(w http.ResponseWriter, r *http.Request) {
 	return
 }
 func index(w http.ResponseWriter, r *http.Request) {
-	pageBytes, err := ioutil.ReadFile("html/index.html")
+	htmlLocation := os.Getenv("HTML_LOCATION")
+	if htmlLocation == "" {
+		htmlLocation = "html"
+	}
+	fmt.Println(htmlLocation)
 
+	fullFileName := htmlLocation + "/index.html"
+	pageBytes, err := ioutil.ReadFile(fullFileName)
 	if err != nil {
 		fmt.Fprintf(w, err.Error())
 	}
 	w.Write(pageBytes)
-	fmt.Fprintf(w, "Hi there, I love %s!", r.URL.Path[1:])
+	fmt.Fprintf(w, "Hi there, I love %s!\n", r.URL.Path[1:])
 	return
 }

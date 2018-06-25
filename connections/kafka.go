@@ -16,21 +16,17 @@ type KafkaConnection struct {
 	logger   ILogger
 }
 
-const (
-	bootstrapServers = "localhost:9092"
-)
-
 var groupid = 1
 var topic = "playerPosition"
 
 //NewKafkaConnection creates a new kafka connection
-func NewKafkaConnection(logger ILogger) (*KafkaConnection, error) {
+func NewKafkaConnection(logger ILogger, brokerList string) (*KafkaConnection, error) {
 	var err error
 	kconn := KafkaConnection{}
 	kconn.logger = logger
 	kconn.Cleanup = make(chan int)
 	kconn.consumer, err = kafka.NewConsumer(&kafka.ConfigMap{
-		"bootstrap.servers":               bootstrapServers,
+		"bootstrap.servers":               brokerList,
 		"group.id":                        groupid,
 		"enable.auto.commit":              false,
 		"session.timeout.ms":              6000,
@@ -48,7 +44,7 @@ func NewKafkaConnection(logger ILogger) (*KafkaConnection, error) {
 	}
 
 	kconn.producer, err = kafka.NewProducer(&kafka.ConfigMap{
-		"bootstrap.servers":      bootstrapServers,
+		"bootstrap.servers":      brokerList,
 		"linger.ms":              0,
 		"socket.nagle.disable":   true,
 		"socket.blocking.max.ms": 1,
