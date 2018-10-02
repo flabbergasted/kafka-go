@@ -9,10 +9,6 @@ import (
 	_ "net/http/pprof"
 	"os"
 
-	_ "net/http"
-
-	_ "net/http/pprof"
-
 	"github.com/flabbergasted/kafka/connections"
 )
 
