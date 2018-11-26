@@ -41,7 +41,7 @@ services:
     image: kafkatest
     build: .
     ports:
-      - "1588:1588"
+      - "1580:1580"
     environment:
         HTML_LOCATION: "/go/src/github.com/flabbergasted/kafka/html"
         BROKER_LIST: "kafka:9092, kafka2:9092, kafka3:9092"

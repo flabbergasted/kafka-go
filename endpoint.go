@@ -15,13 +15,13 @@ import (
 func main() {
 	http.HandleFunc("/ws", webSocket)
 	http.HandleFunc("/index", index)
-	err := http.ListenAndServe(":1588", nil)
+	err := http.ListenAndServe(":1580", nil)
 	if err != nil {
 		log.Fatal("ListenAndServe:", err)
 	}
 }
 func webSocket(w http.ResponseWriter, r *http.Request) {
-	logger := connections.NoOpLogger{}
+	logger := connections.FmtLogger{}
 	brokerList := os.Getenv("BROKER_LIST")
 	if brokerList == "" {
 		brokerList = "localhost:9092"
