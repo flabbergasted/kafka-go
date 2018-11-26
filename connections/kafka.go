@@ -104,7 +104,7 @@ func (kconn *KafkaConnection) Listen(callback func([]byte)) {
 func (kconn *KafkaConnection) Send(msg []byte) {
 	defer func() {
         if r := recover(); r != nil {
-            wconn.logger.Log("Recovered in Kafka.Send")
+            kconn.logger.Log("Recovered in Kafka.Send")
         }
     }()
 	//kconn.logger.Log("kafka.go sending message")
