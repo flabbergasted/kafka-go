@@ -102,6 +102,11 @@ func (kconn *KafkaConnection) Listen(callback func([]byte)) {
 
 //Send sends the message through the producer to kafka
 func (kconn *KafkaConnection) Send(msg []byte) {
+	defer func() {
+        if r := recover(); r != nil {
+            wconn.logger.Log("Recovered in Kafka.Send")
+        }
+    }()
 	//kconn.logger.Log("kafka.go sending message")
 	kconn.producer.ProduceChannel() <- &kafka.Message{TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny}, Value: msg}
 }
