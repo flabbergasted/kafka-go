@@ -28,6 +28,7 @@ const (
 type WebsocketConnection struct {
 	connection  *websocket.Conn
 	Cleanup     chan int
+	Closing  chan int
 	sendMessage chan []byte
 	logger      ILogger
 }
@@ -39,6 +40,7 @@ func NewWebsocketConnection(w http.ResponseWriter, r *http.Request, newLogger IL
 	wconn.connection, err = upgrader.Upgrade(w, r, nil)
 	wconn.sendMessage = make(chan []byte)
 	wconn.Cleanup = make(chan int)
+	wconn.Closing = make(chan int)
 	wconn.logger = newLogger
 
 	if err != nil {
@@ -62,7 +64,7 @@ func (wconn *WebsocketConnection) Listen(callback func([]byte)) {
 				}
 				return
 			}
-			fmt.Printf("Received message from WS %s @%s\n", message, time.Now())
+			wconn.logger.Log(fmt.Sprintf("Received message from WS %s @%s\n", message, time.Now()))
 			callback(message)
 		}
 	}()
@@ -84,7 +86,6 @@ func (wconn *WebsocketConnection) writeLoop() {
 
 	defer func() {
 		ticker.Stop()
-		close(wconn.sendMessage)
 		wconn.connection.SetWriteDeadline(time.Now().Add(writeWait))
 		wconn.connection.WriteMessage(websocket.CloseMessage, []byte{})
 		wconn.connection.Close()
@@ -106,10 +107,11 @@ func (wconn *WebsocketConnection) writeLoop() {
 			wconn.connection.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := wconn.connection.WriteMessage(websocket.PingMessage, nil); err != nil {
 				wconn.logger.LogError(err)
-				WSClose(wconn)
+				close(wconn.Closing)
 				return
 			}
 		case <-wconn.Cleanup:
+			close(wconn.sendMessage)
 			return
 		case newMsg := <-wconn.sendMessage:
 			wconn.logger.Log("websocket.go sending message")
@@ -118,14 +120,14 @@ func (wconn *WebsocketConnection) writeLoop() {
 			writer, err := wconn.connection.NextWriter(websocket.TextMessage)
 			if err != nil {
 				wconn.logger.Log(err.Error())
-				WSClose(wconn)
+				close(wconn.Closing)
 				return
 			}
 			writer.Write(newMsg)
 
 			if err := writer.Close(); err != nil {
 				wconn.logger.Log(err.Error())
-				WSClose(wconn)
+				close(wconn.Closing)
 				return
 			}
 		}

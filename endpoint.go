@@ -15,7 +15,7 @@ import (
 func main() {
 	http.HandleFunc("/ws", webSocket)
 	http.HandleFunc("/index", index)
-	err := http.ListenAndServe(":1588", nil)
+	err := http.ListenAndServe(":1580", nil)
 	if err != nil {
 		log.Fatal("ListenAndServe:", err)
 	}
@@ -41,11 +41,13 @@ func webSocket(w http.ResponseWriter, r *http.Request) {
 
 	go func() { //When one connection closes, make sure to close the other
 		select {
-		case <-kafkaConn.Cleanup:
+		case <-kafkaConn.Closing:
 			connections.WSClose(conn)
-			return
-		case <-conn.Cleanup:
 			connections.KClose(kafkaConn)
+			return
+		case <-conn.Closing:
+			connections.KClose(kafkaConn)
+			connections.WSClose(conn)
 			return
 		}
 	}()

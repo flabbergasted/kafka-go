@@ -11,6 +11,7 @@ import (
 //KafkaConnection controls the underlying kafka consumer/producer.
 type KafkaConnection struct {
 	Cleanup  chan int
+	Closing  chan int
 	consumer *kafka.Consumer
 	producer *kafka.Producer
 	logger   ILogger
@@ -25,6 +26,7 @@ func NewKafkaConnection(logger ILogger, brokerList string) (*KafkaConnection, er
 	kconn := KafkaConnection{}
 	kconn.logger = logger
 	kconn.Cleanup = make(chan int)
+	kconn.Closing = make(chan int)
 	kconn.consumer, err = kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers":               brokerList,
 		"group.id":                        groupid,
@@ -85,13 +87,14 @@ func (kconn *KafkaConnection) Listen(callback func([]byte)) {
 					fmt.Fprintf(os.Stderr, "%% %v\n", e)
 					kconn.consumer.Unassign()
 				case *kafka.Message:
-					fmt.Printf("%% Message on %s:\n%s\n",
-						e.TopicPartition, e.Value)
+					kconn.logger.Log(fmt.Sprintf("%% Message on %s:\n%s\n",
+						e.TopicPartition, e.Value))
 					callback(e.Value) //call passed in callback on regular kafka message
 				case kafka.PartitionEOF:
 					fmt.Printf("%% Reached %v\n", e)
 				case kafka.Error:
 					kconn.logger.LogError(e)
+					close(kconn.Closing)
 					return
 				}
 			case <-kconn.Cleanup:
