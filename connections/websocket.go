@@ -1,7 +1,6 @@
 package connections
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
@@ -64,7 +63,7 @@ func (wconn *WebsocketConnection) Listen(callback func([]byte)) {
 				}
 				return
 			}
-			wconn.logger.Log(fmt.Sprintf("Received message from WS %s @%s\n", message, time.Now()))
+			//wconn.logger.Log(fmt.Sprintf("Received message from WS %s @%s\n", message, time.Now()))
 			callback(message)
 		}
 	}()
@@ -111,22 +110,22 @@ func (wconn *WebsocketConnection) writeLoop() {
 				return
 			}
 		case <-wconn.Cleanup:
+			wconn.logger.Log("websocket cleanup received")
 			close(wconn.sendMessage)
 			return
 		case newMsg := <-wconn.sendMessage:
-			wconn.logger.Log("websocket.go sending message")
 			wconn.connection.SetWriteDeadline(time.Now().Add(writeWait))
 
 			writer, err := wconn.connection.NextWriter(websocket.TextMessage)
 			if err != nil {
-				wconn.logger.Log(err.Error())
+				wconn.logger.Log("NextWriter error" + err.Error())
 				close(wconn.Closing)
 				return
 			}
 			writer.Write(newMsg)
 
 			if err := writer.Close(); err != nil {
-				wconn.logger.Log(err.Error())
+				wconn.logger.Log("Write error " + err.Error())
 				close(wconn.Closing)
 				return
 			}
