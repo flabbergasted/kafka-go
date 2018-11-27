@@ -2,8 +2,6 @@ package connections
 
 import (
 	"fmt"
-	"os"
-	"time"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
@@ -11,6 +9,7 @@ import (
 //KafkaConnection controls the underlying kafka consumer/producer.
 type KafkaConnection struct {
 	Cleanup  chan int
+	Closing  chan int
 	consumer *kafka.Consumer
 	producer *kafka.Producer
 	logger   ILogger
@@ -25,6 +24,7 @@ func NewKafkaConnection(logger ILogger, brokerList string) (*KafkaConnection, er
 	kconn := KafkaConnection{}
 	kconn.logger = logger
 	kconn.Cleanup = make(chan int)
+	kconn.Closing = make(chan int)
 	kconn.consumer, err = kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers":               brokerList,
 		"group.id":                        groupid,
@@ -79,19 +79,18 @@ func (kconn *KafkaConnection) Listen(callback func([]byte)) {
 			case ev := <-kconn.consumer.Events():
 				switch e := ev.(type) {
 				case kafka.AssignedPartitions:
-					fmt.Fprintf(os.Stderr, "%% %v\n", e)
+					kconn.logger.Log(fmt.Sprintf("%% %v\n", e))
 					kconn.consumer.Assign(e.Partitions)
 				case kafka.RevokedPartitions:
-					fmt.Fprintf(os.Stderr, "%% %v\n", e)
+					kconn.logger.Log(fmt.Sprintf("%% %v\n", e))
 					kconn.consumer.Unassign()
 				case *kafka.Message:
-					fmt.Printf("%% Message on %s:\n%s\n",
-						e.TopicPartition, e.Value)
 					callback(e.Value) //call passed in callback on regular kafka message
-				case kafka.PartitionEOF:
-					fmt.Printf("%% Reached %v\n", e)
+				//case kafka.PartitionEOF:
+					//kconn.logger.Log(fmt.Sprintf("%% Reached %v\n", e))
 				case kafka.Error:
 					kconn.logger.LogError(e)
+					close(kconn.Closing)
 					return
 				}
 			case <-kconn.Cleanup:
@@ -103,7 +102,6 @@ func (kconn *KafkaConnection) Listen(callback func([]byte)) {
 
 //Send sends the message through the producer to kafka
 func (kconn *KafkaConnection) Send(msg []byte) {
-	kconn.logger.Log("kafka.go sending message")
 	kconn.producer.ProduceChannel() <- &kafka.Message{TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny}, Value: msg}
 }
 
@@ -118,9 +116,7 @@ func (kconn *KafkaConnection) producerDeliveryReports() {
 		switch ev := e.(type) {
 		case *kafka.Message:
 			if ev.TopicPartition.Error != nil {
-				fmt.Printf("Delivery failed: %v\n", ev.TopicPartition)
-			} else {
-				fmt.Printf("Delivered message to %v %s\n", ev.TopicPartition, time.Now())
+				kconn.logger.Log(fmt.Sprintf("Delivery failed: %v\n", ev.TopicPartition))
 			}
 		}
 	}
