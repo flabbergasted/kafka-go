@@ -3,7 +3,6 @@ package connections
 import (
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
@@ -85,11 +84,11 @@ func (kconn *KafkaConnection) Listen(callback func([]byte)) {
 					fmt.Fprintf(os.Stderr, "%% %v\n", e)
 					kconn.consumer.Unassign()
 				case *kafka.Message:
-					fmt.Printf("%% Message on %s:\n%s\n",
-						e.TopicPartition, e.Value)
+					//kconn.logger.Log(fmt.Sprintf("%% Message on %s:\n%s\n",
+					//	e.TopicPartition, e.Value))
 					callback(e.Value) //call passed in callback on regular kafka message
 				case kafka.PartitionEOF:
-					fmt.Printf("%% Reached %v\n", e)
+					//fmt.Printf("%% Reached %v\n", e)
 				case kafka.Error:
 					kconn.logger.LogError(e)
 					return
@@ -103,7 +102,12 @@ func (kconn *KafkaConnection) Listen(callback func([]byte)) {
 
 //Send sends the message through the producer to kafka
 func (kconn *KafkaConnection) Send(msg []byte) {
-	kconn.logger.Log("kafka.go sending message")
+	defer func() {
+        if r := recover(); r != nil {
+            kconn.logger.Log("Recovered in Kafka.Send")
+        }
+    }()
+	//kconn.logger.Log("kafka.go sending message")
 	kconn.producer.ProduceChannel() <- &kafka.Message{TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny}, Value: msg}
 }
 
@@ -120,7 +124,7 @@ func (kconn *KafkaConnection) producerDeliveryReports() {
 			if ev.TopicPartition.Error != nil {
 				fmt.Printf("Delivery failed: %v\n", ev.TopicPartition)
 			} else {
-				fmt.Printf("Delivered message to %v %s\n", ev.TopicPartition, time.Now())
+				//fmt.Printf("Delivered message to %v %s\n", ev.TopicPartition, time.Now())
 			}
 		}
 	}
