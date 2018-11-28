@@ -21,7 +21,7 @@ func main() {
 	}
 }
 func webSocket(w http.ResponseWriter, r *http.Request) {
-	logger := connections.FmtLogger{}
+	logger := connections.NoOpLogger{}
 	brokerList := os.Getenv("BROKER_LIST")
 	if brokerList == "" {
 		brokerList = "localhost:9092"
@@ -41,13 +41,11 @@ func webSocket(w http.ResponseWriter, r *http.Request) {
 
 	go func() { //When one connection closes, make sure to close the other
 		select {
-		case <-kafkaConn.Closing:
+		case <-kafkaConn.Cleanup:
 			connections.WSClose(conn)
-			connections.KClose(kafkaConn)
 			return
-		case <-conn.Closing:
+		case <-conn.Cleanup:
 			connections.KClose(kafkaConn)
-			connections.WSClose(conn)
 			return
 		}
 	}()
