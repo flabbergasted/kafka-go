@@ -15,7 +15,7 @@ import (
 func main() {
 	http.HandleFunc("/ws", webSocket)
 	http.HandleFunc("/index", index)
-	err := http.ListenAndServe(":1580", nil)
+	err := http.ListenAndServe(":1588", nil)
 	if err != nil {
 		log.Fatal("ListenAndServe:", err)
 	}
